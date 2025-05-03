@@ -137,7 +137,7 @@ class Mongo :
 
 
     @staticmethod
-    def create_server(guild_id, voice_channel_name, voice_log_name, commands_name) : 
+    def create_server(guild_id) : 
 
         guild_id = static_hash(guild_id)
 
@@ -147,9 +147,9 @@ class Mongo :
                 "_id" : guild_id,
                 "cta_role" : "cta",
                 "cta_manager_role" : "CTA MANAGER",
-                "voice_channel_name" : voice_channel_name,
-                "voice_log_name" : voice_log_name,
-                "commands_name" : commands_name
+                "voice_channel_name" : "cta room",
+                "voice_log_name" : "cta-voice-log",
+                "commands_name" : "cta-commands"
             })
         else : 
             print("Servidor está tentando ser registrado novamente")

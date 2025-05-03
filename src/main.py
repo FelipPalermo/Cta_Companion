@@ -21,29 +21,84 @@ intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 scheduler = AsyncIOScheduler()
 
+
+
+
 # ------ /// Create server /// ------
 @bot.command("server")
-@commands.has_role("CTA MANAGER")
-async def server(ctx, *, mensagem):
+async def server(ctx):
 
-    partes = [p.strip() for p in mensagem.split(",")]
-
-    if len(partes) != 3:
-        await ctx.send("Por favor, insira :\nNome do canal de voz, nome do canal de log e nome do canal de comando, respectivamente!")
+    if ctx.author.id != ctx.guild.owner_id:
+        await ctx.send("❌ Apenas o dono do servidor pode usar este comando ❌")
         return
 
-    voice_channel_name, voice_log_name, commands_name = partes
-    guild_id = str(ctx.guild.id)
-
-    if Mongo.check_exist_sv(str(ctx.guild.id)) : 
-        await ctx.send(f"Servidor ***{ctx.guild.name}***, já esta registrado!")
-        return 
     else : 
-        try:
-            Mongo.create_server(guild_id, voice_channel_name, voice_log_name, commands_name)
-            await ctx.send(f"Servidor registrado com exito : ***{ctx.guild.name}***!")
-        except Exception as e:
-            await ctx.send(f"Erro ao registrar servidor: {e}")
+        guild_id = str(ctx.guild.id)
+        guild = ctx.guild
+
+        if Mongo.check_exist_sv(str(ctx.guild.id)) : 
+            await ctx.send(f"Servidor ***{ctx.guild.name}***, já esta registrado!")
+            return 
+        else : 
+            try:
+                Mongo.create_server(guild_id)
+                await ctx.send(f"Servidor registrado com exito : ***{ctx.guild.name}***!")
+
+                vc_channel = discord.utils.get(guild.text_channels, name="cta room")
+                vc_log = discord.utils.get(guild.text_channels, name="cta-voice-log")
+                cm_channel = discord.utils.get(guild.voice_channels, name="cta-commands")
+                
+                cta = discord.utils.get(guild.roles, name="cta")
+                cta_manager = discord.utils.get(guild.roles, name="CTA MANAGER")
+
+
+                overwrites = {
+                    guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    cta: discord.PermissionOverwrite(view_channel=True),
+                    cta_manager: discord.PermissionOverwrite(view_channel=True)
+                }
+
+                # Criar categoria com as permissões
+                category = discord.utils.get(guild.categories, name="CTA")
+                if not category:
+                    category = await guild.create_category("CTA", overwrites=overwrites)
+                else:
+                    await category.edit(overwrites=overwrites)
+
+
+                category = discord.utils.get(guild.categories, name="CTA")
+                if not category:
+                    category = await guild.create_category("CTA")
+
+
+                # --- /// Create roles and rooms --- ///
+                if cta: 
+                    pass
+                else:
+                    await ctx.guild.create_role(name="cta", category=category)
+
+                if cta_manager:
+                    pass 
+                else: 
+                    await ctx.guild.create_role(name="CTA MANAGER", category=category)
+
+                if vc_channel:
+                    pass
+                else:
+                    await guild.create_voice_channel("cta room", category=category)
+
+                if vc_log:
+                    pass
+                else:
+                    await guild.create_text_channel("cta-voice-log", category=category)
+
+                if cm_channel:
+                    pass
+                else:
+                    await guild.create_text_channel("cta-commands", category=category)
+
+            except Exception as e:
+                await ctx.send(f"Erro ao registrar servidor: {e}")
 
 # ------ /// Change voice channel /// ------ 
 @bot.command("change_vc")
@@ -193,7 +248,6 @@ async def agendar_mensagem(ctx, cargo_nome, mensagem, data_hora: str):
     except ValueError:
         await ctx.send("Formato de data e hora inválido. Use 'dd-mm-yy HH:MM'.")
 
-
 # ------ /// Create invite link /// ------
 async def gerar_link_convite(canal_de_voz):
     convite = await canal_de_voz.create_invite(max_uses=3, unique=True)
@@ -309,7 +363,7 @@ async def on_member_update(before, after):
         )
 
         embed.set_footer(
-            text="Leia com atenção as informações antes de responder se concorda!\nMas obrigatório para quem possui a tag @CTA."
+            text="Leia com atenção as informações antes de responder se concorda!"
         )
 
         try:
